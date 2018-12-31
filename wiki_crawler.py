@@ -9,7 +9,7 @@ class WikiCrawler:
         self.MAX_P_CHECKS = 5
         self.MAX_CRAWLS = 10
         self.targets = self.get_targets()
-        self.domain = "https://en.wikipedia.org" 
+        self.domain = "https://en.wikipedia.org"
         if not wiki:
             random_url = self.build_url("Special:Random")
             start_url = requests.get(random_url)
@@ -27,7 +27,7 @@ class WikiCrawler:
                     stack.append('(')
                 if ')' in element:
                     stack.pop()
-            if self.is_valid(element) and not stack:
+            if isinstance(element, Tag) and self.is_valid(element) and not stack:
                 next_wiki = element.attrs['title']
                 return next_wiki
         return next_wiki
@@ -37,7 +37,8 @@ class WikiCrawler:
         html = requests.get(link)
         soup = BeautifulSoup(html.content, 'lxml')
         div = soup.find('div', {'class': 'mw-parser-output'})
-        p_tags = div.find_all('p', not {'class': 'mw-empty-elt'}, recursive=False, limit=2)
+        p_tags = div.find_all('p', not {'class': 'mw-empty-elt'}, 
+                              recursive=False, limit=self.MAX_P_CHECKS)
         next_wiki = None
         for p in p_tags:
             next_wiki = self.parse_p_tag(p)
@@ -48,7 +49,7 @@ class WikiCrawler:
     def build_url(self, wiki_topic):
         return self.domain + "/wiki/" + wiki_topic.replace(" ", "_")
 
-    def crawl_to_philosophy(self):
+    def crawl(self):
         found = False
         cycle_check = set()
 
@@ -97,9 +98,8 @@ class WikiCrawler:
 
 
 if __name__ == '__main__':
-
     wiki = None
     if len(sys.argv) == 2:
         wiki = sys.argv[1]
     crawler = WikiCrawler(wiki)
-    crawler.crawl_to_philosophy()
+    crawler.crawl()
