@@ -2,7 +2,8 @@ from bs4 import BeautifulSoup
 import requests
 import time
 
-class WikiCrawler():
+
+class WikiCrawler:
     def __init__(self, wiki="Special:Random"):
         self.MAX_P_CHECKS = 5
         self.MAX_CRAWLS = 10
@@ -14,9 +15,6 @@ class WikiCrawler():
             self.start_wiki = start_url.url.split('/wiki/')[1]
         else:
             self.start_wiki = wiki
-
-    def is_valid(self, element):
-        return getattr(element, 'name', None) == 'a' and 'id' not in element.attrs
 
     def parse_p_tag(self, p):
         next_wiki = None
@@ -44,21 +42,6 @@ class WikiCrawler():
             if next_wiki:
                 return next_wiki
         return next_wiki
-
-    def get_targets(self):
-        link = "https://dispenser.info.tm/~dispenser/cgi-bin/rdcheck.py?page=Philosophy"
-        html = requests.get(link)
-        soup = BeautifulSoup(html.content, 'lxml')
-
-        ul_bullet = soup.find('ul', {'class': 'notarget'})
-        li_bullets = ul_bullet.find_all('li')
-
-        labels = set()
-
-        for bullet in li_bullets:
-            labels.add(bullet.text)
-
-        return labels
 
     def build_url(self, wiki_topic):
         return self.domain + "/wiki/" + wiki_topic.replace(" ", "_")
@@ -89,6 +72,26 @@ class WikiCrawler():
                 wiki = "Philosophy"
                 found = True
             print(wiki)
+
+    @staticmethod
+    def is_valid(element):
+        return getattr(element, 'name', None) == 'a' and 'id' not in element.attrs
+
+    @staticmethod
+    def get_targets():
+        link = "https://dispenser.info.tm/~dispenser/cgi-bin/rdcheck.py?page=Philosophy"
+        html = requests.get(link)
+        soup = BeautifulSoup(html.content, 'lxml')
+
+        ul_bullet = soup.find('ul', {'class': 'notarget'})
+        li_bullets = ul_bullet.find_all('li')
+
+        labels = set()
+
+        for bullet in li_bullets:
+            labels.add(bullet.text)
+
+        return labels
 
 
 if __name__ == '__main__':
