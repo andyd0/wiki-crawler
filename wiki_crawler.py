@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 import requests
 import time
 
@@ -19,13 +19,14 @@ class WikiCrawler:
     def parse_p_tag(self, p):
         next_wiki = None
         contents = p.contents
-        within_brackets = False
+        stack = []
         for element in contents:
-            if '(' in element:
-                within_brackets = True
-            elif ')' in element:
-                within_brackets = False
-            elif self.is_valid(element) and not within_brackets:
+            if isinstance(element, NavigableString):
+                if '(' in element:
+                    stack.append('(')
+                if ')' in element:
+                    stack.pop()
+            if self.is_valid(element) and not stack:
                 next_wiki = element.attrs['title']
                 return next_wiki
         return next_wiki
