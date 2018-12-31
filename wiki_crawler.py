@@ -1,16 +1,17 @@
 from bs4 import BeautifulSoup, NavigableString, Tag
 import requests
+import sys
 import time
 
 
 class WikiCrawler:
-    def __init__(self, wiki="Special:Random"):
+    def __init__(self, wiki):
         self.MAX_P_CHECKS = 5
         self.MAX_CRAWLS = 10
         self.targets = self.get_targets()
         self.domain = "https://en.wikipedia.org" 
-        if wiki == "Special:Random":
-            random_url = self.build_url(wiki)
+        if not wiki:
+            random_url = self.build_url("Special:Random")
             start_url = requests.get(random_url)
             self.start_wiki = start_url.url.split('/wiki/')[1]
         else:
@@ -96,5 +97,9 @@ class WikiCrawler:
 
 
 if __name__ == '__main__':
-    crawler = WikiCrawler()
+
+    wiki = None
+    if len(sys.argv) == 2:
+        wiki = sys.argv[1]
+    crawler = WikiCrawler(wiki)
     crawler.crawl_to_philosophy()
