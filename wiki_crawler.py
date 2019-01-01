@@ -1,4 +1,5 @@
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup
+from bs4.element import NavigableString, Tag
 import requests
 import sys
 import time
@@ -6,16 +7,17 @@ import time
 
 class WikiCrawler:
     def __init__(self, wiki):
-        self.MAX_P_CHECKS = 5
-        self.MAX_CRAWLS = 10
-        self.targets = self.get_targets()
-        self.domain = "https://en.wikipedia.org"
-        if not wiki:
-            random_url = self.build_url("Special:Random")
-            start_url = requests.get(random_url)
-            self.start_wiki = start_url.url.split('/wiki/')[1]
-        else:
-            self.start_wiki = wiki
+        self.MAX_P_CHECKS = 1
+        self.MAX_CRAWLS = 1
+        self.TARGET = "Philosophy"
+        self.DOMAIN = "https://en.wikipedia.org"
+        self.start_wiki = "Special:Random" if not wiki else wiki
+        self.completed_path = 0
+        self.invalid_path = 0
+
+    @staticmethod
+    def is_valid(element):
+        return getattr(element, 'name', None) == 'a' and 'id' not in element.attrs
 
     def parse_p_tag(self, p):
         next_wiki = None
@@ -28,16 +30,12 @@ class WikiCrawler:
                 if ')' in element:
                     stack.pop()
             if isinstance(element, Tag) and self.is_valid(element) and not stack:
-                next_wiki = element.attrs['title']
+                next_wiki = element.attrs['href']
                 return next_wiki
         return next_wiki
 
-    def traverse(self, wiki_topic):
-        link = self.build_url(wiki_topic) 
-        html = requests.get(link)
-        soup = BeautifulSoup(html.content, 'lxml')
-        div = soup.find('div', {'class': 'mw-parser-output'})
-        p_tags = div.find_all('p', not {'class': 'mw-empty-elt'}, 
+    def continue_parsing(self, div):
+        p_tags = div.find_all('p', not {'class': 'mw-empty-elt'},
                               recursive=False, limit=self.MAX_P_CHECKS)
         next_wiki = None
         for p in p_tags:
@@ -46,60 +44,55 @@ class WikiCrawler:
                 return next_wiki
         return next_wiki
 
-    def build_url(self, wiki_topic):
-        return self.domain + "/wiki/" + wiki_topic.replace(" ", "_")
+    def build_url(self, wiki_topic, add_wiki_text):
+        if add_wiki_text:
+            url = self.DOMAIN + '/wiki/' + wiki_topic
+        else:
+            url = self.DOMAIN + wiki_topic
+        return url
 
-    def crawl(self):
-        found = False
+    def crawler(self):
+        done = False
         cycle_check = set()
 
         print("Start of path: " + self.start_wiki)
 
-        wiki = self.start_wiki
+        url = self.build_url(self.start_wiki, True)
 
-        while not found:
+        while True:
+            html = requests.get(url)
+            soup = BeautifulSoup(html.content, 'lxml')
+
+            title = soup.find('h1', {"id": "firstHeading"})
+
+            if title.getText() == self.TARGET:
+                return True
+
+            div = soup.find('div', {'class': 'mw-parser-output'})
+
             time.sleep(2)
-            wiki = self.traverse(wiki)
+            wiki = self.continue_parsing(div)
 
-            if not wiki:
-                print("DEADEND")
-                break
+            if not wiki or wiki in cycle_check:
+                print("INVALID")
+                self.invalid_path += 1
+                return False
+            else:
+                cycle_check.add(wiki)
+                print(wiki)
+                url = self.build_url(wiki, False)
 
-            if wiki in cycle_check:
-                print("CYCLE: " + wiki)
-                break
-
-            cycle_check.add(wiki)
-
-            if wiki in self.targets:
-                wiki = "Philosophy"
-                found = True
-            print(wiki)
-
-    @staticmethod
-    def is_valid(element):
-        return getattr(element, 'name', None) == 'a' and 'id' not in element.attrs
-
-    @staticmethod
-    def get_targets():
-        link = "https://dispenser.info.tm/~dispenser/cgi-bin/rdcheck.py?page=Philosophy"
-        html = requests.get(link)
-        soup = BeautifulSoup(html.content, 'lxml')
-
-        ul_bullet = soup.find('ul', {'class': 'notarget'})
-        li_bullets = ul_bullet.find_all('li')
-
-        labels = set()
-
-        for bullet in li_bullets:
-            labels.add(bullet.text)
-
-        return labels
+    def crawl(self):
+        i = 0
+        while i < self.MAX_CRAWLS:
+            if self.crawler():
+                self.completed_path += 1
+            else:
+                self.invalid_path += 1
+            i += 1
 
 
 if __name__ == '__main__':
-    wiki = None
-    if len(sys.argv) == 2:
-        wiki = sys.argv[1]
+    wiki = "Math"
     crawler = WikiCrawler(wiki)
     crawler.crawl()
