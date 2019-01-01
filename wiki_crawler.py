@@ -17,7 +17,9 @@ class WikiCrawler:
 
     @staticmethod
     def is_valid(element):
-        return getattr(element, 'name', None) == 'a' and 'id' not in element.attrs
+        return getattr(element, 'name', None) == 'a' and not \
+                getattr(element.parent, 'name', None) == 'sup' and not \
+                getattr(element.parent, 'name', None) == 'i'
 
     def build_url(self, wiki_topic, add_wiki_text):
         if add_wiki_text:
@@ -44,9 +46,12 @@ class WikiCrawler:
             # Checks to see if the stack is empty
             # meaning now outside of the parenthesis
             # and can check if a link
-            if isinstance(element, Tag) and self.is_valid(element) and not stack:
-                next_wiki = element.attrs['href']
-                return next_wiki
+            if isinstance(element, Tag) and not stack:
+                a_tag = element
+                if not getattr(element, 'name', None) == 'a':
+                    a_tag = element.find('a')
+                if self.is_valid(a_tag):
+                    return a_tag.attrs['href']
         return next_wiki
 
     def parse_html(self, div):
@@ -73,7 +78,7 @@ class WikiCrawler:
             title = soup.find('h1', {"id": "firstHeading"})
 
             if title.getText() == self.TARGET:
-                print("test")
+                return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
 
@@ -104,6 +109,6 @@ class WikiCrawler:
 
 
 if __name__ == '__main__':
-    wiki = "Philosophy"
+    wiki = "Art"
     crawler = WikiCrawler(wiki)
     crawler.crawl()
