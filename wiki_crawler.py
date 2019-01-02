@@ -8,17 +8,14 @@ class WikiCrawler:
     def __init__(self, wiki):
         self.MAX_P_CHECKS = 5
         self.MAX_CRAWLS = 1
+        self.MAX_PATH_LENGTH = 50
         self.TARGET = "Philosophy"
         self.DOMAIN = "https://en.wikipedia.org"
         self.start_wiki = "Special:Random" if not wiki else wiki
+        self.path_lengths = []
+        self.wiki_to_target_length = {}
         self.completed_path = 0
         self.invalid_path = 0
-
-    @staticmethod
-    def is_valid(element):
-        return getattr(element, 'name', None) == 'a' and not \
-                getattr(element.parent, 'name', None) == 'sup' and not \
-                getattr(element.parent, 'name', None) == 'i'
 
     def build_url(self, wiki_topic, add_wiki_text):
         if add_wiki_text:
@@ -72,47 +69,64 @@ class WikiCrawler:
         return next_wiki
 
     def crawler(self):
+
         cycle_check = set()
-
-        print("Start of path: " + self.start_wiki)
-
+        path = []
+        path_length = 0
+        print("\nStart")
         url = self.build_url(self.start_wiki, True)
+        session = requests.Session()
 
-        while True:
-            html = requests.get(url)
+        while path_length < self.MAX_PATH_LENGTH:
+
+            html = session.get(url)
             soup = BeautifulSoup(html.content, 'lxml')
 
             title = soup.find('h1', {"id": "firstHeading"})
+            wiki_topic = url.split("/wiki/")[1]
+            print(title.getText())
 
             if title.getText() == self.TARGET:
+                self.path_lengths.append(path_length)
                 return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
-
             wiki = self.parse_html(div)
 
             # Might lead to a dead end (no links to follow) or
             # a cycle (first eventually links back to a wiki
             # page already visited
             if not wiki or wiki in cycle_check:
-                print("INVALID")
                 self.invalid_path += 1
                 return False
-            else:
-                cycle_check.add(wiki)
-                print(wiki)
-                url = self.build_url(wiki, False)
 
-            time.sleep(2)
+            cycle_check.add(wiki)
+            wiki_topic = wiki.split("/wiki/")[1]
+            path.append(wiki_topic)
+            url = self.build_url(wiki, False)
+            path_length += 1
 
+            time.sleep(1)
+
+        return False
+
+    # Iterates over crawler for the max number of crawls
+    # while not taking into account invalid paths - dead ends
+    # or cycles
     def crawl(self):
-        i = 0
-        while i < self.MAX_CRAWLS:
+        while self.completed_path < self.MAX_CRAWLS:
             if self.crawler():
                 self.completed_path += 1
             else:
                 self.invalid_path += 1
-            i += 1
+            print()
+
+    @staticmethod
+    def is_valid(element):
+        tags = ['sup', 'i', 'span']
+        return getattr(element, 'name', None) == 'a' \
+               and getattr(element.parent, 'name', None) not in tags \
+               and not element.has_attr('style')
 
 
 if __name__ == '__main__':
