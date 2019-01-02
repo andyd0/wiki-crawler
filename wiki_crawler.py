@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 import requests
-import sys
 import time
 
 
@@ -28,9 +27,9 @@ class WikiCrawler:
             url = self.DOMAIN + wiki_topic
         return url
 
-    def parse_p_tag(self, p):
+    def parse_tag(self, tag):
         next_wiki = None
-        contents = p.contents
+        contents = tag.contents
         stack = []
         for element in contents:
             # Keeps track of balanced parenthesis to
@@ -55,13 +54,21 @@ class WikiCrawler:
         return next_wiki
 
     def parse_html(self, div):
+        # Likely to find the first link in paragraphs. A limit
+        # is placed on the number of paragraphs to check since
+        # it's also likley the link is in the initial paragraphs.
         p_tags = div.find_all('p', not {'class': 'mw-empty-elt'},
                               recursive=False, limit=self.MAX_P_CHECKS)
-        next_wiki = None
         for p in p_tags:
-            next_wiki = self.parse_p_tag(p)
+            next_wiki = self.parse_tag(p)
             if next_wiki:
                 return next_wiki
+
+        # To handle cases that the link may not be in a paragraph
+        # but in bullets
+        ul = div.find('ul', recursive=False)
+        next_wiki = self.parse_tag(ul)
+
         return next_wiki
 
     def crawler(self):
