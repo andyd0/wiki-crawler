@@ -149,6 +149,16 @@ class WikiCrawler:
 
         self.plot_distribution(self.path_lengths)
 
+    def plot_distribution(self, path_lengths):
+        plt.hist(x=path_lengths, bins='auto', color='#00aaff', alpha=0.7,
+                 rwidth=0.85)
+
+        plt.grid(axis='y', alpha=0.75)
+        plt.xlabel('Path Lengths')
+        plt.ylabel('Frequency')
+        plt.title(f'Distribution of Path Lengths for {self.max_crawls} Start Pages')
+        plt.show()
+
     @staticmethod
     def is_valid(element):
         tags = ['sup', 'i', 'span']
@@ -156,17 +166,6 @@ class WikiCrawler:
                and getattr(element.parent, 'name', None) not in tags \
                and not element.has_attr('style')
 
-    @staticmethod
-    def plot_distribution(path_lengths):
-
-        plt.hist(x=path_lengths, bins='auto', color='#00aaff', alpha=0.7,
-                 rwidth=0.85)
-
-        plt.grid(axis='y', alpha=0.75)
-        plt.xlabel('Path Lengths')
-        plt.ylabel('Frequency')
-        plt.title('Distribution of Path Lengths for 500 Start Pages')
-        plt.show()
 
 
 if __name__ == '__main__':
