@@ -70,13 +70,9 @@ class WikiCrawler:
 
     def process_path(self, path, wiki_topic):
         length = len(path)
-        if not wiki_topic:
-            for i, wiki in enumerate(path):
-                self.wiki_to_target_length[wiki] = length - i - 1
-        else:
-            to_target = self.wiki_to_target_length[wiki_topic]
-            for i, wiki in enumerate(path):
-                self.wiki_to_target_length[wiki] = length - i + to_target - 1
+        to_target = self.wiki_to_target_length[wiki_topic] if wiki_topic else 0
+        for i, wiki in enumerate(path):
+            self.wiki_to_target_length[wiki] = length - i + to_target - 1
 
     def crawler(self):
 
