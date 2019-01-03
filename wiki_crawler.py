@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
+import calendar
+import logging
 import matplotlib.pyplot as plt
 import requests
 import time
@@ -30,11 +32,18 @@ class WikiCrawler:
         self.start_wiki = wiki if wiki else "Special:Random"
         self.max_crawls = 1 if wiki else max_crawls
         self.max_path_length = max_path_length
-        self.ignore_invalids = ignore_invalids
+        self.ignore_invalids = False if wiki else ignore_invalids
         self._path_lengths = []
         self._wiki_to_target_length = {}
         self._completed_path = 0
         self._invalid_path = 0
+
+        self.logger = logging.getLogger("WikiCrawler app")
+        self.logger.info("WikiCrawler instance created")
+        timestamp = int(calendar.timegm(time.gmtime()))
+        fh = logging.FileHandler(f'crawler_{str(timestamp)}.log')
+        self.logger.addHandler(fh) 
+        self.logger.setLevel(logging.INFO)
 
     def _build_url(self, wiki_topic, add_wiki_text):
         """
@@ -45,7 +54,7 @@ class WikiCrawler:
         """
 
         if add_wiki_text:
-            url = self._DOMAIN + '/wiki/' + wiki_topic
+            url = self._DOMAIN + "/wiki/" + wiki_topic
         else:
             url = self._DOMAIN + wiki_topic
         return url
@@ -59,7 +68,12 @@ class WikiCrawler:
         """
 
         next_wiki = None
-        contents = tag.contents
+
+        try:
+            contents = tag.contents
+        except AttributeError:
+            return None
+
         stack = []
         for element in contents:
             # Keeps track of balanced parenthesis to ensure no links
@@ -81,6 +95,7 @@ class WikiCrawler:
                     try:
                         return a_tag.attrs['href']
                     except KeyError:
+                        self.logger.warning("Current a tag does not have href")
                         return None
 
         return next_wiki
@@ -90,7 +105,8 @@ class WikiCrawler:
         Handles the further processing of the parse tree to find the next wiki
         page. First looks at p tags at the top level of the div (does not
         recursively check). If it does not find one, it will then check the
-        first ul tag (bullets) to see if there is a link. Otherwise, return None.
+        first ul tag (bullets) to see if there is a link. Otherwise, return
+        None.
         :param div: Tag element - div
         :return: next_wiki: String of link to next wiki page. None if no links
         are found
@@ -135,11 +151,11 @@ class WikiCrawler:
         may not end.
         :return: Boolean indicating whether target has been reached
         """
-        
+        self.logger.info("\n\nStart path traversal")
         cycle_check = set()
         path = []
         path_length = 0
-        print("\nStart")
+
         url = self._build_url(self.start_wiki, True)
         session = requests.Session()
 
@@ -148,20 +164,21 @@ class WikiCrawler:
             try:
                 html = session.get(url)
             except requests.exceptions.RequestException:
+                self.logger.warning(f'URL {url} is invalid')
                 return False
 
             soup = BeautifulSoup(html.content, 'lxml')
 
             title = soup.find('h1', {"id": "firstHeading"})
             wiki_topic = url.split("/wiki/")[1]
-            print(title.get_text())
+            self.logger.info(title.get_text())
 
             # If this is true, then a unique path to target has
             # been found
             if title.getText() == self._TARGET:
                 self._process_path(path, None)
                 self._path_lengths.append(path_length)
-                print(path_length)
+                self.logger.info(f'\nNew path. Path length is {path_length}')
                 return True
 
             # Otherwise if the current wiki is known to be on a path
@@ -170,7 +187,7 @@ class WikiCrawler:
                 self._process_path(path, wiki_topic)
                 path_length += self._wiki_to_target_length[wiki_topic]
                 self._path_lengths.append(path_length)
-                print(path_length)
+                self.logger.info(f'\nIntersection. Path length is {path_length}')
                 return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
@@ -180,6 +197,11 @@ class WikiCrawler:
             # a cycle. A cycle occurs if the first link eventually leads back
             # to a wiki page already visited
             if not next_wiki or next_wiki in cycle_check:
+                self.logger.warning("Path is invalid. No next wiki")
+                return False
+
+            if next_wiki in cycle_check:
+                self.logger.warning(f'\nPath is invalid. Cycle at {next_wiki}')
                 return False
 
             cycle_check.add(next_wiki)
@@ -193,6 +215,7 @@ class WikiCrawler:
             try:
                 wiki_topic = next_wiki.split("/wiki/")[1]
             except IndexError:
+                self.logger.warning(f'\n{next_wiki} is invalid')
                 return False
 
             path.append(wiki_topic)
@@ -207,6 +230,7 @@ class WikiCrawler:
         Creates a histogram that shows the distribution of path lengths
         for the number of crawls
         """
+
         plt.hist(x=self._path_lengths, bins='auto', color='#00aaff', alpha=0.7,
                  rwidth=0.85)
 
@@ -223,24 +247,29 @@ class WikiCrawler:
         cycles or if path doesn't reach "Philosophy". Max path
         length can be set but default is 50.
         """
-        while self._completed_path < self.max_crawls:
+        count = 0
+        while count < self.max_crawls:
             if self._crawler():
                 self._completed_path += 1
+                count += 1
             else:
                 self._invalid_path += 1
-            print()
+                count += 1 if not self.ignore_invalids else 0
+
         print(f'Completed paths: {self._completed_path}')
         print(f'Invalid paths: {self._invalid_path}')
 
     @staticmethod
     def _is_valid(element):
         """
-        This checks to see if the tag is a valid "a" tag. Other than checking if it
-        is the proper tag, it checks 1) if it's parent is not unwanted tags and that
-        style is not defined. These cases typically lead to invalid links
+        This checks to see if the tag is a valid "a" tag. Other than checking
+        if it is the proper tag, it checks 1) if it's parent is not unwanted
+        tags and that style is not defined. These cases typically lead to
+        invalid links
         :param element: The current tag being processed
         :return: Boolean indicating whether it's a valid "a" tag
         """
+
         tags = ['sup', 'i', 'span']
         return getattr(element, 'name', None) == 'a' \
                and getattr(element.parent, 'name', None) not in tags \
