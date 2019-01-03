@@ -45,7 +45,7 @@ class WikiCrawler:
             if isinstance(element, Tag) and not stack:
                 a_tag = element
                 if not getattr(element, 'name', None) == 'a':
-                    a_tag = element.find('a')
+                    a_tag = element.find('a', not {'class': 'mw-selflink'})
                 if self.is_valid(a_tag):
                     return a_tag.attrs['href']
         return next_wiki
@@ -68,6 +68,16 @@ class WikiCrawler:
 
         return next_wiki
 
+    def process_path(self, path, wiki_topic):
+        length = len(path)
+        if not wiki_topic:
+            for i, wiki in enumerate(path):
+                self.wiki_to_target_length[wiki] = length - i - 1
+        else:
+            to_target = self.wiki_to_target_length[wiki_topic]
+            for i, wiki in enumerate(path):
+                self.wiki_to_target_length[wiki] = length - i + to_target - 1
+
     def crawler(self):
 
         cycle_check = set()
@@ -84,28 +94,42 @@ class WikiCrawler:
 
             title = soup.find('h1', {"id": "firstHeading"})
             wiki_topic = url.split("/wiki/")[1]
-            print(title.getText())
+            print(title.get_text())
 
+            # If this is true, then a unique path to target has
+            # been found
             if title.getText() == self.TARGET:
+                self.process_path(path, None)
                 self.path_lengths.append(path_length)
+                print(path_length)
+                return True
+
+            # otherwise if the current wiki is known to be on a path
+            # to target, then stop iterating
+            if wiki_topic in self.wiki_to_target_length:
+                self.process_path(path, wiki_topic)
+                path_length += self.wiki_to_target_length[wiki_topic]
+                self.path_lengths.append(path_length)
+                print(path_length)
                 return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
-            wiki = self.parse_html(div)
+            next_wiki = self.parse_html(div)
 
             # Might lead to a dead end (no links to follow) or
             # a cycle (first eventually links back to a wiki
             # page already visited
-            if not wiki or wiki in cycle_check:
-                self.invalid_path += 1
+            if not next_wiki or next_wiki in cycle_check:
                 return False
 
-            cycle_check.add(wiki)
-            wiki_topic = wiki.split("/wiki/")[1]
+            cycle_check.add(next_wiki)
+            wiki_topic = next_wiki.split("/wiki/")[1]
             path.append(wiki_topic)
-            url = self.build_url(wiki, False)
-            path_length += 1
 
+            if next_wiki[0] == '/':
+                url = self.build_url(next_wiki, False)
+
+            path_length += 1
             time.sleep(1)
 
         return False
@@ -120,6 +144,8 @@ class WikiCrawler:
             else:
                 self.invalid_path += 1
             print()
+        print(f'Completed paths: {self.completed_path}')
+        print(f'Invalid paths: {self.invalid_path}')
 
     @staticmethod
     def is_valid(element):
@@ -130,6 +156,6 @@ class WikiCrawler:
 
 
 if __name__ == '__main__':
-    wiki = "Art"
+    wiki = None
     crawler = WikiCrawler(wiki)
     crawler.crawl()
