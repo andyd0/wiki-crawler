@@ -1,32 +1,63 @@
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 import matplotlib.pyplot as plt
-import numpy as np
 import requests
 import time
 
 
 class WikiCrawler:
-    def __init__(self, wiki, max_crawls):
-        self.MAX_P_CHECKS = 5
-        self.MAX_PATH_LENGTH = 50
-        self.TARGET = "Philosophy"
-        self.DOMAIN = "https://en.wikipedia.org"
-        self.max_crawls = max_crawls
-        self.start_wiki = "Special:Random" if not wiki else wiki
-        self.path_lengths = []
-        self.wiki_to_target_length = {}
-        self.completed_path = 0
-        self.invalid_path = 0
+    """
+    Used to build a crawler that will crawl to the target wiki page, Philosophy.
 
-    def build_url(self, wiki_topic, add_wiki_text):
+    _MAX_P_CHECKS: this is set to a limit (5) since it is expected to find the first link
+    in the first set of p tags
+
+    max_crawls: number of random wiki pages to try
+
+    max_path_length: Limits the length of the longest path. Default is 50. This is mostly
+    to be friendly to Wikipedia in case some wikis have much longer paths
+
+    ignore_invalids: used to include invalids in the total number of crawls
+
+    start_wiki: can specify starting page. Should be formatted as the string
+    appears in the weblink - i.e. including underscores etc
+    """
+
+    def __init__(self, wiki, max_crawls, max_path_length=50, ignore_invalids=True):
+        self._MAX_P_CHECKS = 5
+        self._TARGET = "Philosophy"
+        self._DOMAIN = "https://en.wikipedia.org"
+        self.start_wiki = wiki if wiki else "Special:Random"
+        self.max_crawls = 1 if wiki else max_crawls
+        self.max_path_length = max_path_length
+        self.ignore_invalids = ignore_invalids
+        self._path_lengths = []
+        self._wiki_to_target_length = {}
+        self._completed_path = 0
+        self._invalid_path = 0
+
+    def _build_url(self, wiki_topic, add_wiki_text):
+        """
+        Builds a URL that will be used to reach the next page
+        :param wiki_topic: String representing the next wiki page
+        :param add_wiki_text: Boolean if /wiki/ needs to be added
+        :return: url: String url
+        """
+
         if add_wiki_text:
-            url = self.DOMAIN + '/wiki/' + wiki_topic
+            url = self._DOMAIN + '/wiki/' + wiki_topic
         else:
-            url = self.DOMAIN + wiki_topic
+            url = self._DOMAIN + wiki_topic
         return url
 
-    def parse_tag(self, tag):
+    def _parse_tag(self, tag):
+        """
+        Iterates the tag contents to find a valid "a" tag to get the
+        next link
+        :param tag: Tag element that will be processed
+        :return: next_wiki: String of next wiki page or None if not found
+        """
+
         next_wiki = None
         contents = tag.contents
         stack = []
@@ -46,47 +77,79 @@ class WikiCrawler:
                 a_tag = element
                 if not getattr(element, 'name', None) == 'a':
                     a_tag = element.find('a', not {'class': 'mw-selflink'})
-                if self.is_valid(a_tag):
-                    return a_tag.attrs['href']
+                if self._is_valid(a_tag):
+                    try:
+                        return a_tag.attrs['href']
+                    except KeyError:
+                        return None
 
         return next_wiki
 
-    def parse_html(self, div):
+    def _parse_html(self, div):
+        """
+        Handles the further processing of the parse tree to find the next wiki
+        page. First looks at p tags at the top level of the div (does not
+        recursively check). If it does not find one, it will then check the
+        first ul tag (bullets) to see if there is a link. Otherwise, return None.
+        :param div: Tag element - div
+        :return: next_wiki: String of link to next wiki page. None if no links
+        are found
+        """
+
         # Likely to find the first link in paragraphs. A limit
         # is placed on the number of paragraphs to check since
         # it's also likley the link is in the initial paragraphs.
         p_tags = div.find_all('p', not {'class': 'mw-empty-elt'},
-                              recursive=False, limit=self.MAX_P_CHECKS)
+                              recursive=False, limit=self._MAX_P_CHECKS)
         for p in p_tags:
-            next_wiki = self.parse_tag(p)
+            next_wiki = self._parse_tag(p)
             if next_wiki:
                 return next_wiki
 
         # To handle cases that the link may not be in a paragraph
         # but in bullets
         ul = div.find('ul', recursive=False)
-        next_wiki = self.parse_tag(ul)
+        next_wiki = self._parse_tag(ul)
 
         return next_wiki
 
-    def process_path(self, path, wiki_topic):
+    def _process_path(self, path, wiki_topic):
+        """
+        This fills the dictionary that keeps track of of each page
+        and their distance from the target page to avoid repeated
+        path traversals
+        :param path: List of Strings that represent the path
+        :param wiki_topic: String - The wiki topic at intersection
+        """
+
         length = len(path)
-        to_target = self.wiki_to_target_length[wiki_topic] if wiki_topic else 0
+        to_target = self._wiki_to_target_length[wiki_topic] if wiki_topic else 0
         for i, wiki in enumerate(path):
-            self.wiki_to_target_length[wiki] = length - i + to_target - 1
+            self._wiki_to_target_length[wiki] = length - i + to_target - 1
 
-    def crawler(self):
-
+    def _crawler(self):
+        """
+        Handles the actual crawling. Multiple checks are handled to see
+        if the target has been found or if the page is invalid ending the
+        search. The loop has a max path length set to avoid paths that
+        may not end.
+        :return: Boolean indicating whether target has been reached
+        """
+        
         cycle_check = set()
         path = []
         path_length = 0
         print("\nStart")
-        url = self.build_url(self.start_wiki, True)
+        url = self._build_url(self.start_wiki, True)
         session = requests.Session()
 
-        while path_length < self.MAX_PATH_LENGTH:
+        while path_length < self.max_path_length:
 
-            html = session.get(url)
+            try:
+                html = session.get(url)
+            except requests.exceptions.RequestException:
+                return False
+
             soup = BeautifulSoup(html.content, 'lxml')
 
             title = soup.find('h1', {"id": "firstHeading"})
@@ -95,62 +158,56 @@ class WikiCrawler:
 
             # If this is true, then a unique path to target has
             # been found
-            if title.getText() == self.TARGET:
-                self.process_path(path, None)
-                self.path_lengths.append(path_length)
+            if title.getText() == self._TARGET:
+                self._process_path(path, None)
+                self._path_lengths.append(path_length)
                 print(path_length)
                 return True
 
-            # otherwise if the current wiki is known to be on a path
+            # Otherwise if the current wiki is known to be on a path
             # to target, then stop iterating
-            if wiki_topic in self.wiki_to_target_length:
-                self.process_path(path, wiki_topic)
-                path_length += self.wiki_to_target_length[wiki_topic]
-                self.path_lengths.append(path_length)
+            if wiki_topic in self._wiki_to_target_length:
+                self._process_path(path, wiki_topic)
+                path_length += self._wiki_to_target_length[wiki_topic]
+                self._path_lengths.append(path_length)
                 print(path_length)
                 return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
-            next_wiki = self.parse_html(div)
+            next_wiki = self._parse_html(div)
 
             # Might lead to a dead end (no links to follow) or
-            # a cycle (first eventually links back to a wiki
-            # page already visited
+            # a cycle. A cycle occurs if the first link eventually leads back
+            # to a wiki page already visited
             if not next_wiki or next_wiki in cycle_check:
                 return False
 
             cycle_check.add(next_wiki)
-            wiki_topic = next_wiki.split("/wiki/")[1]
-            path.append(wiki_topic)
 
+            # The first link may be to an internal wiki domain. For example,
+            # wikitionary.org. If it is, then no need to build url.
             if next_wiki[0] == '/':
-                url = self.build_url(next_wiki, False)
+                url = self._build_url(next_wiki, False)
+
+            # Should be ok at this point but just in case
+            try:
+                wiki_topic = next_wiki.split("/wiki/")[1]
+            except IndexError:
+                return False
+
+            path.append(wiki_topic)
 
             path_length += 1
             time.sleep(1)
 
         return False
 
-    def crawl(self):
+    def plot_distribution(self):
         """
-        Iterates over crawler for the max number of crawls
-        while not taking into account invalid paths - dead ends,
-        cycles or if path doesn't reach "Philosophy". Max path
-        length can be set but default is 50.
+        Creates a histogram that shows the distribution of path lengths
+        for the number of crawls
         """
-        while self.completed_path < self.max_crawls:
-            if self.crawler():
-                self.completed_path += 1
-            else:
-                self.invalid_path += 1
-            print()
-        print(f'Completed paths: {self.completed_path}')
-        print(f'Invalid paths: {self.invalid_path}')
-
-        self.plot_distribution(self.path_lengths)
-
-    def plot_distribution(self, path_lengths):
-        plt.hist(x=path_lengths, bins='auto', color='#00aaff', alpha=0.7,
+        plt.hist(x=self._path_lengths, bins='auto', color='#00aaff', alpha=0.7,
                  rwidth=0.85)
 
         plt.grid(axis='y', alpha=0.75)
@@ -159,15 +216,32 @@ class WikiCrawler:
         plt.title(f'Distribution of Path Lengths for {self.max_crawls} Start Pages')
         plt.show()
 
+    def crawl(self):
+        """
+        Iterates over crawler for the max number of crawls
+        while not taking into account invalid paths - dead ends,
+        cycles or if path doesn't reach "Philosophy". Max path
+        length can be set but default is 50.
+        """
+        while self._completed_path < self.max_crawls:
+            if self._crawler():
+                self._completed_path += 1
+            else:
+                self._invalid_path += 1
+            print()
+        print(f'Completed paths: {self._completed_path}')
+        print(f'Invalid paths: {self._invalid_path}')
+
     @staticmethod
-    def is_valid(element):
+    def _is_valid(element):
+        """
+        This checks to see if the tag is a valid "a" tag. Other than checking if it
+        is the proper tag, it checks 1) if it's parent is not unwanted tags and that
+        style is not defined. These cases typically lead to invalid links
+        :param element: The current tag being processed
+        :return: Boolean indicating whether it's a valid "a" tag
+        """
         tags = ['sup', 'i', 'span']
         return getattr(element, 'name', None) == 'a' \
                and getattr(element.parent, 'name', None) not in tags \
                and not element.has_attr('style')
-
-
-
-if __name__ == '__main__':
-    crawler = WikiCrawler(wiki=None, max_crawls=20)
-    crawler.crawl()
