@@ -1,16 +1,18 @@
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
+import matplotlib.pyplot as plt
+import numpy as np
 import requests
 import time
 
 
 class WikiCrawler:
-    def __init__(self, wiki):
+    def __init__(self, wiki, max_crawls):
         self.MAX_P_CHECKS = 5
-        self.MAX_CRAWLS = 1
         self.MAX_PATH_LENGTH = 50
         self.TARGET = "Philosophy"
         self.DOMAIN = "https://en.wikipedia.org"
+        self.max_crawls = max_crawls
         self.start_wiki = "Special:Random" if not wiki else wiki
         self.path_lengths = []
         self.wiki_to_target_length = {}
@@ -29,25 +31,24 @@ class WikiCrawler:
         contents = tag.contents
         stack = []
         for element in contents:
-            # Keeps track of balanced parenthesis to
-            # ensure no links that are within them
-            # are used. Since closing parenthesis
-            # may be within the same string, pop
-            # must be checked immediately
+            # Keeps track of balanced parenthesis to ensure no links
+            # that are within them are used. Since closing parenthesis
+            # may be within the same string, pop must be checked immediately
             if isinstance(element, NavigableString):
                 if '(' in element:
                     stack.append('(')
                 if ')' in element:
                     stack.pop()
-            # Checks to see if the stack is empty
-            # meaning now outside of the parenthesis
-            # and can check if a link
+
+            # Checks to see if the stack is empty meaning now outside
+            # of the parenthesis and can check if a link is valid
             if isinstance(element, Tag) and not stack:
                 a_tag = element
                 if not getattr(element, 'name', None) == 'a':
                     a_tag = element.find('a', not {'class': 'mw-selflink'})
                 if self.is_valid(a_tag):
                     return a_tag.attrs['href']
+
         return next_wiki
 
     def parse_html(self, div):
@@ -130,11 +131,14 @@ class WikiCrawler:
 
         return False
 
-    # Iterates over crawler for the max number of crawls
-    # while not taking into account invalid paths - dead ends
-    # or cycles
     def crawl(self):
-        while self.completed_path < self.MAX_CRAWLS:
+        """
+        Iterates over crawler for the max number of crawls
+        while not taking into account invalid paths - dead ends,
+        cycles or if path doesn't reach "Philosophy". Max path
+        length can be set but default is 50.
+        """
+        while self.completed_path < self.max_crawls:
             if self.crawler():
                 self.completed_path += 1
             else:
@@ -143,6 +147,8 @@ class WikiCrawler:
         print(f'Completed paths: {self.completed_path}')
         print(f'Invalid paths: {self.invalid_path}')
 
+        self.plot_distribution(self.path_lengths)
+
     @staticmethod
     def is_valid(element):
         tags = ['sup', 'i', 'span']
@@ -150,8 +156,19 @@ class WikiCrawler:
                and getattr(element.parent, 'name', None) not in tags \
                and not element.has_attr('style')
 
+    @staticmethod
+    def plot_distribution(path_lengths):
+
+        plt.hist(x=path_lengths, bins='auto', color='#00aaff', alpha=0.7,
+                 rwidth=0.85)
+
+        plt.grid(axis='y', alpha=0.75)
+        plt.xlabel('Path Lengths')
+        plt.ylabel('Frequency')
+        plt.title('Distribution of Path Lengths for 500 Start Pages')
+        plt.show()
+
 
 if __name__ == '__main__':
-    wiki = None
-    crawler = WikiCrawler(wiki)
+    crawler = WikiCrawler(wiki=None, max_crawls=20)
     crawler.crawl()
