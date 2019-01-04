@@ -35,15 +35,23 @@ class WikiCrawler:
         self.ignore_invalids = False if wiki else ignore_invalids
         self._path_lengths = []
         self._wiki_to_target_length = {}
-        self._completed_path = 0
-        self._invalid_path = 0
-
+        self._completed_paths = 0
+        self._invalid_paths = 0
         self.logger = logging.getLogger("WikiCrawler app")
+
+        self.set_up_loggers()
+
+    def set_up_loggers(self):
         self.logger.info("WikiCrawler instance created")
         timestamp = int(calendar.timegm(time.gmtime()))
-        fh = logging.FileHandler(f'crawler_{str(timestamp)}.log')
-        self.logger.addHandler(fh) 
+
+        # For file
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.FileHandler(f'crawler_{str(timestamp)}.log'))
+
+        # For screen
         self.logger.setLevel(logging.INFO)
+        self.logger.addHandler(logging.StreamHandler()) 
 
     def _build_url(self, wiki_topic, add_wiki_text):
         """
@@ -151,7 +159,7 @@ class WikiCrawler:
         may not end.
         :return: Boolean indicating whether target has been reached
         """
-        self.logger.info("\n\nStart path traversal")
+        self.logger.info("Start path traversal")
         cycle_check = set()
         path = []
         path_length = 0
@@ -170,12 +178,13 @@ class WikiCrawler:
             soup = BeautifulSoup(html.content, 'lxml')
 
             title = soup.find('h1', {"id": "firstHeading"})
+            title = title.get_text()
             wiki_topic = url.split("/wiki/")[1]
-            self.logger.info(title.get_text())
+            self.logger.debug(title)
 
             # If this is true, then a unique path to target has
             # been found
-            if title.getText() == self._TARGET:
+            if title == self._TARGET:
                 self._process_path(path, None)
                 self._path_lengths.append(path_length)
                 self.logger.info(f'\nNew path. Path length is {path_length}')
@@ -196,7 +205,7 @@ class WikiCrawler:
             # Might lead to a dead end (no links to follow) or
             # a cycle. A cycle occurs if the first link eventually leads back
             # to a wiki page already visited
-            if not next_wiki or next_wiki in cycle_check:
+            if not next_wiki:
                 self.logger.warning("Path is invalid. No next wiki")
                 return False
 
@@ -249,15 +258,16 @@ class WikiCrawler:
         """
         count = 0
         while count < self.max_crawls:
+            self.logger.info(f'\n\nAt # {self._completed_paths + self._invalid_paths + 1}')
             if self._crawler():
-                self._completed_path += 1
+                self._completed_paths += 1
                 count += 1
             else:
-                self._invalid_path += 1
+                self._invalid_paths += 1
                 count += 1 if not self.ignore_invalids else 0
 
-        print(f'Completed paths: {self._completed_path}')
-        print(f'Invalid paths: {self._invalid_path}')
+        print(f'\n\nCompleted paths: {self._completed_paths}')
+        print(f'Invalid paths: {self._invalid_paths}')
 
     @staticmethod
     def _is_valid(element):
