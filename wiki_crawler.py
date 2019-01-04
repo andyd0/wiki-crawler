@@ -14,13 +14,14 @@ class WikiCrawler:
     """
     Used to build a crawler that will crawl to the target wiki page, Philosophy.
 
-    _MAX_P_CHECKS: this is set to a limit (5) since it is expected to find the first link
-    in the first set of p tags
+    _MAX_P_CHECKS: this is set to a limit (5) since it seems likely that the
+    first link is in the first set of p tags
 
     max_crawls: number of random wiki pages to try
 
-    max_path_length: Limits the length of the longest path. Default is 50. This is mostly
-    to be friendly to Wikipedia in case some wikis have much longer paths
+    max_path_length: Limits the length of the longest path. Default is 50.
+    This is mostly to be friendly to Wikipedia in case some wikis have much
+    longer paths
 
     ignore_invalids: used to include invalids in the total number of crawls
 
@@ -41,28 +42,28 @@ class WikiCrawler:
         self._track_cycles = set()
         self._valid_paths = 0
         self._invalid_paths = 0
-        self.logger = logging.getLogger("WikiCrawler app")
+        self._logger = logging.getLogger("WikiCrawler app")
 
-        self.set_up_loggers()
+        self._set_up_loggers()
 
-    def set_up_loggers(self):
+    def _set_up_loggers(self):
         """
         Logging is handled for both on screen (set to INFO)
         and log file (set to DEBUG)
         """
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.info("WikiCrawler instance created")
+        self._logger.setLevel(logging.DEBUG)
+        self._logger.info("WikiCrawler instance created")
         timestamp = int(calendar.timegm(time.gmtime()))
 
         # For file
         fh = logging.FileHandler(f'crawler_{str(timestamp)}.log', 'w', 'utf-8')
         fh.setLevel(logging.DEBUG)
-        self.logger.addHandler(fh)
+        self._logger.addHandler(fh)
 
         # For screen
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
-        self.logger.addHandler(sh)
+        self._logger.addHandler(sh)
 
     def _build_url(self, wiki_topic, add_wiki_text):
         """
@@ -80,7 +81,7 @@ class WikiCrawler:
 
     def _parse_tag(self, tag):
         """
-        Iterates the tag contents to find a valid "a" tag to get the
+        Iterates over the tag contents to find a valid "a" tag to get the
         next link
         :param tag: Tag element that will be processed
         :return: next_wiki: String of next wiki page or None if not found
@@ -117,7 +118,7 @@ class WikiCrawler:
                     try:
                         return a_tag.attrs['href']
                     except KeyError:
-                        self.logger.warning("Current a tag does not have href")
+                        self._logger.warning("Current a tag does not have href")
                         return None
 
         return next_wiki
@@ -194,7 +195,7 @@ class WikiCrawler:
             try:
                 html = session.get(url)
             except requests.exceptions.RequestException:
-                self.logger.warning(f'URL {url} is invalid')
+                self._logger.warning(f'URL {url} is invalid')
                 return False
 
             soup = BeautifulSoup(html.content, 'lxml')
@@ -202,14 +203,14 @@ class WikiCrawler:
             title = soup.find('h1', {"id": "firstHeading"})
             title = title.get_text()
             wiki_topic = url.split("/wiki/")[1]
-            self.logger.debug(title)
+            self._logger.debug(title)
 
             # If this is true, then a unique path to target has
             # been found
             if title == self._TARGET:
                 self._process_path(path, None)
                 self._path_lengths.append(path_length)
-                self.logger.info(f'\nNew path. Path length is {path_length}')
+                self._logger.info(f'\nNew path. Path length is {path_length}')
                 return True
 
             # Otherwise if the current wiki is known to be on a path
@@ -218,7 +219,7 @@ class WikiCrawler:
                 self._process_path(path, wiki_topic)
                 path_length += self._wiki_to_target_length[wiki_topic]
                 self._path_lengths.append(path_length)
-                self.logger.info(f'\nIntersection. Path length is {path_length}')
+                self._logger.info(f'\nIntersection. Path length is {path_length}')
                 return True
 
             div = soup.find('div', {'class': 'mw-parser-output'})
@@ -226,13 +227,13 @@ class WikiCrawler:
 
             # Might lead to a dead end (no links to follow)
             if not next_wiki:
-                self.logger.warning("\nPath is invalid. No next wiki")
+                self._logger.warning("\nPath is invalid. No next wiki")
                 return False
 
             # Or a cycle is found in a new path or known cycle path
             if next_wiki in self._track_cycles or next_wiki in cycle_check:
                 self._add_to_track_cycles(path)
-                self.logger.warning("\nPath is invalid. Cycle found")
+                self._logger.warning("\nPath is invalid. Cycle found")
                 return False
 
             cycle_check.add(next_wiki)
@@ -246,7 +247,7 @@ class WikiCrawler:
             try:
                 wiki_topic = next_wiki.split("/wiki/")[1]
             except IndexError:
-                self.logger.warning(f'\n{next_wiki} is invalid')
+                self._logger.warning(f'\n{next_wiki} is invalid')
                 return False
 
             path.append(wiki_topic)
@@ -290,11 +291,11 @@ class WikiCrawler:
             else:
                 self._invalid_paths += 1
                 count += 1 if not self.ignore_invalids else 0
-            self.logger.info(f'\nProcessed: {self._valid_paths + self._invalid_paths}'
+            self._logger.info(f'\nProcessed: {self._valid_paths + self._invalid_paths}'
                              f', Valid: {self._valid_paths}, '
                              f'Invalid: {self._invalid_paths}\n')
 
-        print(f'\n\nCompleted paths: {self._valid_paths}')
+        print(f'\n\nValid paths: {self._valid_paths}')
         print(f'Invalid paths: {self._invalid_paths}')
         print(f'Average path length: {mean(self._path_lengths):.1f}')
 
