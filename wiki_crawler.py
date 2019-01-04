@@ -295,6 +295,10 @@ class WikiCrawler:
         print(f'Invalid paths: {self._invalid_paths}')
         print(f'Average path length: {mean(self._path_lengths):.1f}')
 
+        if not self.ignore_invalids:
+            print(f'Percentage that lead to {self._TARGET}: ', end="")
+            print(f'{(self._completed_paths / count):.1%}', end="")
+
     @staticmethod
     def _is_valid(element):
         """
