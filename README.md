@@ -18,6 +18,8 @@ Beautiful Soup was used to generate a parse HTML to process.
 
 A logger is used to display summary details to screen so that there is a way to know at what point the processing is at. Full path details are saved to a log file as well.
 
+Two test files are included that can be used to get the answers to the questions in the Wiki Crawler problem.
+
 ### Key Details
 
 * To avoid traversing to `Philosophy` down a known path, a `dictionary` is with a wiki page as key and its distance from `Philosophy` as the value. When a new path is found, the dictionary is populated with the entire path and their distances from `Philosophy`. If an intersection is found, the traversing is terminated and the dictionary is populated with the new partial path while adjusting the distance based on what the distance of the intersection is from `Philosophy`. Since paths seem to reguarly end up down the same path, as the number of crawls increases, the number of intersections did tend to increase as well leading to improvements in processing time while avoiding unnecessary hits to Wikipedia.
