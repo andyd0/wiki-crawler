@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
+from collections import Counter
+from matplotlib.ticker import FormatStrFormatter
 import calendar
 import logging
 import matplotlib.pyplot as plt
@@ -35,6 +37,7 @@ class WikiCrawler:
         self.ignore_invalids = False if wiki else ignore_invalids
         self._path_lengths = []
         self._wiki_to_target_length = {}
+        self._track_cycles = set()
         self._completed_paths = 0
         self._invalid_paths = 0
         self.logger = logging.getLogger("WikiCrawler app")
@@ -46,16 +49,19 @@ class WikiCrawler:
         Logging is handled for both on screen (set to INFO)
         and log file (set to DEBUG)
         """
+        self.logger.setLevel(logging.DEBUG)
         self.logger.info("WikiCrawler instance created")
         timestamp = int(calendar.timegm(time.gmtime()))
 
         # For file
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.FileHandler(f'crawler_{str(timestamp)}.log'))
+        fh = logging.FileHandler(f'crawler_{str(timestamp)}.log', 'w', 'utf-8')
+        fh.setLevel(logging.DEBUG)
+        self.logger.addHandler(fh)
 
         # For screen
-        self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(logging.StreamHandler()) 
+        sh = logging.StreamHandler()
+        sh.setLevel(logging.INFO)
+        self.logger.addHandler(sh)
 
     def _build_url(self, wiki_topic, add_wiki_text):
         """
@@ -86,20 +92,23 @@ class WikiCrawler:
         except AttributeError:
             return None
 
-        stack = []
+        paranthesis_count = 0
         for element in contents:
             # Keeps track of balanced parenthesis to ensure no links
             # that are within them are used. Since closing parenthesis
-            # may be within the same string, pop must be checked immediately
+            # may be within the same string, closing must be checked as well.
+            # Counter is used to get the frequency of open and close parenthesis
+            # to check for properly closed parenthesis.
             if isinstance(element, NavigableString):
-                if '(' in element:
-                    stack.append('(')
-                if ')' in element:
-                    stack.pop()
+                char_freq = Counter(element)
+                if '(' in char_freq:
+                    paranthesis_count += char_freq['(']
+                if ')' in char_freq:
+                    paranthesis_count -= char_freq[')']
 
             # Checks to see if the stack is empty meaning now outside
             # of the parenthesis and can check if a link is valid
-            if isinstance(element, Tag) and not stack:
+            if isinstance(element, Tag) and paranthesis_count == 0:
                 a_tag = element
                 if not getattr(element, 'name', None) == 'a':
                     a_tag = element.find('a', not {'class': 'mw-selflink'})
@@ -155,6 +164,15 @@ class WikiCrawler:
         for i, wiki in enumerate(path):
             self._wiki_to_target_length[wiki] = length - i + to_target - 1
 
+    def _add_to_track_cycles(self, path):
+        """
+        Adds to cycle tracking set to ensure known paths that lead
+        to cycle are ended early
+        :param path: List of Strings that represent the path
+        """
+        for wiki in path:
+            self._track_cycles.add(wiki)
+
     def _crawler(self):
         """
         Handles the actual crawling. Multiple checks are handled to see
@@ -163,7 +181,6 @@ class WikiCrawler:
         may not end.
         :return: Boolean indicating whether target has been reached
         """
-        self.logger.info("Start path traversal")
         cycle_check = set()
         path = []
         path_length = 0
@@ -206,15 +223,15 @@ class WikiCrawler:
             div = soup.find('div', {'class': 'mw-parser-output'})
             next_wiki = self._parse_html(div)
 
-            # Might lead to a dead end (no links to follow) or
-            # a cycle. A cycle occurs if the first link eventually leads back
-            # to a wiki page already visited
+            # Might lead to a dead end (no links to follow)
             if not next_wiki:
-                self.logger.warning("Path is invalid. No next wiki")
+                self.logger.warning("\nPath is invalid. No next wiki")
                 return False
 
-            if next_wiki in cycle_check:
-                self.logger.warning(f'\nPath is invalid. Cycle at {next_wiki}')
+            # Or a cycle is found in a new path or known cycle path
+            if next_wiki in self._track_cycles or next_wiki in cycle_check:
+                self._add_to_track_cycles(path)
+                self.logger.warning("\nPath is invalid. Cycle found")
                 return False
 
             cycle_check.add(next_wiki)
@@ -234,7 +251,7 @@ class WikiCrawler:
             path.append(wiki_topic)
 
             path_length += 1
-            time.sleep(1)
+            time.sleep(.300)
 
         return False
 
@@ -243,6 +260,9 @@ class WikiCrawler:
         Creates a histogram that shows the distribution of path lengths
         for the number of crawls
         """
+
+        _, ax = plt.subplots()
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 
         plt.hist(x=self._path_lengths, bins='auto', color='#00aaff', alpha=0.7,
                  rwidth=0.85)

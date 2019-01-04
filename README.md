@@ -1,1 +1,1 @@
-# wiki-crawler
+# WikiCrawler
