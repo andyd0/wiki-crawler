@@ -39,7 +39,7 @@ class WikiCrawler:
         self._path_lengths = []
         self._wiki_to_target_length = {}
         self._track_cycles = set()
-        self._completed_paths = 0
+        self._valid_paths = 0
         self._invalid_paths = 0
         self.logger = logging.getLogger("WikiCrawler app")
 
@@ -264,6 +264,7 @@ class WikiCrawler:
 
         _, ax = plt.subplots()
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 
         plt.hist(x=self._path_lengths, bins='auto', color='#00aaff', alpha=0.7,
                  rwidth=0.85)
@@ -283,21 +284,23 @@ class WikiCrawler:
         """
         count = 0
         while count < self.max_crawls:
-            self.logger.info(f'\n\nAt # {self._completed_paths + self._invalid_paths + 1}')
             if self._crawler():
-                self._completed_paths += 1
+                self._valid_paths += 1
                 count += 1
             else:
                 self._invalid_paths += 1
                 count += 1 if not self.ignore_invalids else 0
+            self.logger.info(f'\nProcessed: {self._valid_paths + self._invalid_paths}'
+                             f', Valid: {self._valid_paths}, '
+                             f'Invalid: {self._invalid_paths}\n')
 
-        print(f'\n\nCompleted paths: {self._completed_paths}')
+        print(f'\n\nCompleted paths: {self._valid_paths}')
         print(f'Invalid paths: {self._invalid_paths}')
         print(f'Average path length: {mean(self._path_lengths):.1f}')
 
         if not self.ignore_invalids:
             print(f'Percentage that lead to {self._TARGET}: ', end="")
-            print(f'{(self._completed_paths / count):.1%}', end="")
+            print(f'{(self._valid_paths / count):.1%}', end="")
 
     @staticmethod
     def _is_valid(element):
