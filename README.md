@@ -47,11 +47,11 @@ Most of the paths range from a length of 10-20 where ~14 is the most common (the
 
 ### Percentage of Pages that Lead to Philosophy
 
-To get the percentage of pages that lead to Philosophy, 500 crawls were processed while not ignoring invalid pages. The stats...
+To get the percentage of pages that lead to Philosophy, 500 crawls were processed while not ignoring invalid paths. The stats...
 
 * Valid paths: 445
 * Invalid paths: 55
 * Average path length: 14.3
 * Percentage that lead to Philosophy: 89.0%
 
-Increasing the number of crawls may lead to a higher percentage of pages that lead to Philosophy but only up to 500 crawls was tested.
+Increasing the number of crawls may lead to a higher percentage of paths that lead to Philosophy but only up to 500 crawls was tested.
