@@ -288,8 +288,8 @@ class WikiCrawler:
                 self._invalid_paths += 1
                 count += 1 if not self.ignore_invalids else 0
             self._logger.info(f'\nProcessed: {self._valid_paths + self._invalid_paths}'
-                             f', Valid: {self._valid_paths}, '
-                             f'Invalid: {self._invalid_paths}\n')
+                              f', Valid: {self._valid_paths}, '
+                              f'Invalid: {self._invalid_paths}\n')
 
         print(f'\nValid paths: {self._valid_paths}')
         print(f'Invalid paths: {self._invalid_paths}')
