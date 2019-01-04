@@ -6,6 +6,7 @@ import calendar
 import logging
 import matplotlib.pyplot as plt
 import requests
+from statistics import mean
 import time
 
 
@@ -292,6 +293,7 @@ class WikiCrawler:
 
         print(f'\n\nCompleted paths: {self._completed_paths}')
         print(f'Invalid paths: {self._invalid_paths}')
+        print(f'Average path length: {mean(self._path_lengths):.1f}')
 
     @staticmethod
     def _is_valid(element):
