@@ -94,23 +94,23 @@ class WikiCrawler:
         except AttributeError:
             return None
 
-        paranthesis_count = 0
+        parentheses_count = 0
         for element in contents:
-            # Keeps track of balanced parenthesis to ensure no links
-            # that are within them are used. Since closing parenthesis
+            # Keeps track of balanced parentheses to ensure no links
+            # that are within them are used. Since closing parentheses
             # may be within the same string, closing must be checked as well.
-            # Counter is used to get the frequency of open and close parenthesis
-            # to check for properly closed parenthesis.
+            # Counter is used to get the frequency of open and close
+            # parentheses to check for properly closed parentheses.
             if isinstance(element, NavigableString):
                 char_freq = Counter(element)
                 if '(' in char_freq:
-                    paranthesis_count += char_freq['(']
+                    parentheses_count += char_freq['(']
                 if ')' in char_freq:
-                    paranthesis_count -= char_freq[')']
+                    parentheses_count -= char_freq[')']
 
-            # Checks to see if the stack is empty meaning now outside
-            # of the parenthesis and can check if a link is valid
-            if isinstance(element, Tag) and paranthesis_count == 0:
+            # Checks to see if the parentheses count is at 0 meaning
+            # now outside of the parentheses and can check if a link is valid
+            if isinstance(element, Tag) and parentheses_count == 0:
                 a_tag = element
                 if not getattr(element, 'name', None) == 'a':
                     a_tag = element.find('a', not {'class': 'mw-selflink'})
@@ -127,7 +127,8 @@ class WikiCrawler:
         """
         Handles the further processing of the parse tree to find the next wiki
         page. First looks at p tags at the top level of the div (does not
-        recursively check). If it does not find one, it will then check the
+        recursively check) to a set limit since it usually was in the first
+        few p tags. If it does not find one, it will then check the
         first ul tag (bullets) to see if there is a link. Otherwise, return
         None.
         :param div: Tag element - div
@@ -135,9 +136,6 @@ class WikiCrawler:
         are found
         """
 
-        # Likely to find the first link in paragraphs. A limit
-        # is placed on the number of paragraphs to check since
-        # it's also likley the link is in the initial paragraphs.
         p_tags = div.find_all('p', not {'class': 'mw-empty-elt'},
                               recursive=False, limit=self._MAX_P_CHECKS)
         for p in p_tags:
@@ -145,8 +143,6 @@ class WikiCrawler:
             if next_wiki:
                 return next_wiki
 
-        # To handle cases that the link may not be in a paragraph
-        # but in bullets
         ul = div.find('ul', recursive=False)
         next_wiki = self._parse_tag(ul)
 
@@ -247,7 +243,7 @@ class WikiCrawler:
             try:
                 wiki_topic = next_wiki.split("/wiki/")[1]
             except IndexError:
-                self._logger.warning(f'\n{next_wiki} is invalid')
+                self._logger.warning(f'\nURL {next_wiki} is invalid')
                 return False
 
             path.append(wiki_topic)
