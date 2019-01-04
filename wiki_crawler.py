@@ -42,6 +42,10 @@ class WikiCrawler:
         self.set_up_loggers()
 
     def set_up_loggers(self):
+        """
+        Logging is handled for both on screen (set to INFO)
+        and log file (set to DEBUG)
+        """
         self.logger.info("WikiCrawler instance created")
         timestamp = int(calendar.timegm(time.gmtime()))
 
