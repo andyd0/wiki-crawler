@@ -22,15 +22,15 @@ Two test files are included that can be used to get the answers to the questions
 
 ### Key Details
 
-* To avoid traversing to `Philosophy` down a known path, a `dictionary` is with a wiki page as key and its distance from `Philosophy` as the value. When a new path is found, the dictionary is populated with the entire path and their distances from `Philosophy`. If an intersection is found, the traversing is terminated and the dictionary is populated with the new partial path while adjusting the distance based on what the distance of the intersection is from `Philosophy`. Since paths seem to reguarly end up down the same path, as the number of crawls increases, the number of intersections did tend to increase as well leading to improvements in processing time while avoiding unnecessary hits to Wikipedia.
+* To avoid traversing to `Philosophy` down a known path, a `dictionary` is with a wiki page as key and its distance from `Philosophy` as the value. When a new path is found, the dictionary is populated with the entire path and their distances from `Philosophy`. If an intersection is found, the traversing is terminated and the dictionary is populated with the new partial path while adjusting the distance based on what the distance of the intersection is from `Philosophy`. Since paths seem to usually end up down the same path, as the number of crawls increases, the number of intersections did tend to increase as well leading to improvements in processing time while avoiding unnecessary hits to Wikipedia.
 * Cycles were handled similarly to valid paths to terminate cycle paths. But instead of a dictionary, two `sets` are used to keep track of a cycle
   * A local cycle check is used to ensure the current path is not a new path with a cycle
   * A global set is used to terminate a path that is known to lead to a cycle
-* Chrome Developer Tools was used to identify the proper div to check for the first link. Typically within this div the initial set of `p` tags would have the `a` tag needed and there is a hard limit to only check the first 5 `p` tags. If no links were found, then likely there is a bullet list that can be checked. The first bullet list is checked and if a link is found, then that link is followed. An example of this is wiki page `Zingg`. If there are still no links found, it is assumed that there are no links to follow and traversing is terminated.
+* Chrome Developer Tools was used to identify the proper div to check for the first link. Typically, within this div the initial set of `p` tags would have the `a` tag needed and there is a hard limit to only check the first 5 `p` tags. If no links were found, then likely there is a bullet list that can be checked. The first bullet list is checked and if a link is found, then that link is followed. An example of this is wiki page `Zingg`. If there are still no links found, it is assumed that there are no links to follow and traversing is terminated.
 * There are multiple checks to ensure a proper `a` tag with a link is used but may not catch every edge case. Multiple runs of 500 crawls were executed, though, showing no issues.
   * Avoiding parentheses was a bit tricky to handle. Initially tried handling via a stack to check for balanced parenthesis but that would not cover cases if a string included multiple parenthesis (e.g. `Jim_Breithaupt`). Instead, a Counter is used to get the counts of '(' and ')' in the current string with an outer variable that keeps track of the difference. If the value is `0` and the current element is an `a` tag, then processing is allowed.
   * There is a validator as well to ensure that a footnote is not a superscript / cite link, italicized, parent is span (e.g. coordinates on the top right of a page for a country) tag or has style defined.
-* There are redirects to Philosophy (e.g. Philosphical) that should be valid. To handle these instances, the title of the page is checked to see if it says "Philosophy" even if the link that lead it to there may not be.
+* There are redirects to Philosophy (e.g. Philosophical) that should be valid. To handle these instances, the title of the page is checked to see if it says "Philosophy" even if the link that lead it to there may not be.
 * On rare cases, the link may be to an internal Wikipedia domain (eg. Wikitionary). These are allowed.
 
 ## Results
@@ -47,7 +47,7 @@ Most of the paths range from a length of 10-20 where ~14 is the most common (the
 
 ### Percentage of Pages that Lead to Philosophy
 
-To get the percentage of pages that lead to Philosophy, 500 crawls were processed while not ingoring invalid pages. The stats...
+To get the percentage of pages that lead to Philosophy, 500 crawls were processed while not ignoring invalid pages. The stats...
 
 * Valid paths: 445
 * Invalid paths: 55
