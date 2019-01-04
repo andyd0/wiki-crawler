@@ -295,7 +295,7 @@ class WikiCrawler:
                              f', Valid: {self._valid_paths}, '
                              f'Invalid: {self._invalid_paths}\n')
 
-        print(f'\n\nValid paths: {self._valid_paths}')
+        print(f'\nValid paths: {self._valid_paths}')
         print(f'Invalid paths: {self._invalid_paths}')
         print(f'Average path length: {mean(self._path_lengths):.1f}')
 
