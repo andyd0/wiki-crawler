@@ -28,14 +28,12 @@ Two test files are included that can be used to get the answers to the questions
   * A global set is used to terminate a path that is known to lead to a cycle
 * Chrome Developer Tools was used to identify the proper div to check for the first link. Typically, within this div the initial set of `p` tags would have the `a` tag needed and there is a hard limit to only check the first 5 `p` tags. If no links were found, then likely there is a bullet list that can be checked. The first bullet list is checked and if a link is found, then that link is followed. An example of this is wiki page `Zingg`. If there are still no links found, it is assumed that there are no links to follow and traversing is terminated.
 * There are multiple checks to ensure a proper `a` tag with a link is used but may not catch every edge case. Multiple runs of 500 crawls were executed, though, showing no issues.
-  * Avoiding parentheses was a bit tricky to handle. Initially tried handling via a stack to check for balanced parenthesis but that would not cover cases if a string included multiple parenthesis (e.g. `Jim_Breithaupt`). Instead, a Counter is used to get the counts of '(' and ')' in the current string with an outer variable that keeps track of the difference. If the value is `0` and the current element is an `a` tag, then processing is allowed.
+  * Avoiding parentheses was a bit tricky to handle since a single string could have multiple parentheses (e.g. `Jim_Breithaupt`). To handle this, A Counter is used to get the counts of '(' and ')' in the current string with an outer variable that keeps track of the difference. If the value is `0` and the current element is an `a` tag, then processing is allowed.
   * There is a validator as well to ensure that a footnote is not a superscript / cite link, italicized, parent is span (e.g. coordinates on the top right of a page for a country) tag or has style defined.
 * There are redirects to Philosophy (e.g. Philosophical) that should be valid. To handle these instances, the title of the page is checked to see if it says "Philosophy" even if the link that lead it to there may not be.
 * On rare cases, the link may be to an internal Wikipedia domain (eg. Wikitionary). These are allowed.
 
 ## Results
-
-***NOTE: The log files produced for both runs are included.***
 
 ### Distribution
 
