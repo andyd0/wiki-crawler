@@ -9,7 +9,7 @@ Options...
   * Number of crawls
   * Ignoring invalid paths - Boolean that specifies whether the crawling should include invalid paths (dead ends, red links etc) into the count.
     * If this is to `False`, percentage of pages that lead to `Philosophy` will be shown.
-  * Length of path - default is set to path lengths of 50 as just a hard limit but from testing rarely any path was any longer than around 25 page links
+  * Length of path - default is set to path lengths of max 50 as a hard limit but from testing rarely any path was longer than around 25 page links
 * "plot_distribution" method can be used to get a chart of the distribution of path lengths
 
 ## Implementation Details
