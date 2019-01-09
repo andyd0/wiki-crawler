@@ -18,7 +18,7 @@ Beautiful Soup was used to generate a parse HTML to process.
 
 A logger is used to display summary details to screen so that there is a way to know at what point the processing is at. Full path details are saved to a log file as well.
 
-### Key Details
+### Details
 
 * To avoid traversing to `Philosophy` down a known path, a `dictionary` is with a wiki page as key and its distance from `Philosophy` as the value. When a new path is found, the dictionary is populated with the entire path and their distances from `Philosophy`. If an intersection is found, the traversing is terminated and the dictionary is populated with the new partial path while adjusting the distance based on what the distance of the intersection is from `Philosophy`. Since paths seem to usually end up down the same path, as the number of crawls increases, the number of intersections did tend to increase as well leading to improvements in processing time while avoiding unnecessary hits to Wikipedia.
 * Cycles were handled similarly to valid paths to terminate cycle paths. But instead of a dictionary, two `sets` are used to keep track of a cycle
@@ -26,3 +26,4 @@ A logger is used to display summary details to screen so that there is a way to 
   * A global set is used to terminate a path that is known to lead to a cycle
 * There are redirects to Philosophy (e.g. Philosophical) that should be valid. To handle these instances, the title of the page is checked to see if it says "Philosophy" even if the link that lead it to there may not be.
 * On rare cases, the link may be to an internal Wikipedia domain (eg. Wikitionary). These are allowed.
+* Sleep timer set to 0.3 seconds after each crawl

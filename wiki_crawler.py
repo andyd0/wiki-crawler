@@ -68,9 +68,13 @@ class WikiCrawler:
     def _build_url(self, wiki_topic, add_wiki_text):
         """
         Builds a URL that will be used to reach the next page
-        :param wiki_topic: String representing the next wiki page
-        :param add_wiki_text: Boolean if /wiki/ needs to be added
-        :return: url: String url
+
+        Args:
+            wiki_topic: String representing the next wiki page
+            add_wiki_text: Boolean if /wiki/ needs to be added
+        
+        Returns:
+            A url string that will be used to traverse to next page
         """
 
         if add_wiki_text:
@@ -83,8 +87,12 @@ class WikiCrawler:
         """
         Iterates over the tag contents to find a valid "a" tag to get the
         next link
-        :param tag: Tag element that will be processed
-        :return: next_wiki: String of next wiki page or None if not found
+
+        Args:
+            tag: Tag element that will be processed
+        
+        Returns:
+            next_wiki: String of next wiki page or None if not found
         """
 
         next_wiki = None
@@ -131,9 +139,13 @@ class WikiCrawler:
         few p tags. If it does not find one, it will then check the
         first ul tag (bullets) to see if there is a link. Otherwise, return
         None.
-        :param div: Tag element - div
-        :return: next_wiki: String of link to next wiki page. None if no links
-        are found
+        
+        Args:
+            div: Tag element - div
+        
+        Returns:
+            next_wiki: String of link to next wiki page. None if no links
+            are found
         """
 
         p_tags = div.find_all('p', not {'class': 'mw-empty-elt'},
@@ -153,8 +165,10 @@ class WikiCrawler:
         This fills the dictionary that keeps track of of each page
         and their distance from the target page to avoid repeated
         path traversals
-        :param path: List of Strings that represent the path
-        :param wiki_topic: String - The wiki topic at intersection
+
+        Args:
+            path: List of Strings that represent the path
+            wiki_topic: String - The wiki topic at intersection
         """
 
         length = len(path)
@@ -166,7 +180,9 @@ class WikiCrawler:
         """
         Adds to cycle tracking set to ensure known paths that lead
         to cycle are ended early
-        :param path: List of Strings that represent the path
+
+        Args:
+            path: List of Strings that represent the path
         """
         for wiki in path:
             self._track_cycles.add(wiki)
@@ -177,7 +193,9 @@ class WikiCrawler:
         if the target has been found or if the page is invalid ending the
         search. The loop has a max path length set to avoid paths that
         may not end.
-        :return: Boolean indicating whether target has been reached
+
+        Returns:
+            Boolean indicating whether target has been reached
         """
         cycle_check = set()
         path = []
@@ -306,8 +324,12 @@ class WikiCrawler:
         if it is the proper tag, it checks 1) if it's parent is not unwanted
         tags and that style is not defined. These cases typically lead to
         invalid links
-        :param element: The current tag being processed
-        :return: Boolean indicating whether it's a valid "a" tag
+
+        Args:
+            element: The current tag being processed
+
+        Returns
+            Boolean indicating whether it's a valid "a" tag
         """
 
         tags = ['sup', 'i', 'span']
