@@ -318,7 +318,7 @@ class WikiCrawler:
             print(f'{(self._valid_paths / count):.1%}', end="")
 
     @staticmethod
-    def _is_valid(element):
+    def _is_valid(tag):
         """
         This checks to see if the tag is a valid "a" tag. Other than checking
         if it is the proper tag, it checks 1) if it's parent is not unwanted
@@ -326,13 +326,13 @@ class WikiCrawler:
         invalid links
 
         Args:
-            element: The current tag being processed
+            tag: The current tag being processed
 
-        Returns
+        Returns:
             Boolean indicating whether it's a valid "a" tag
         """
 
-        tags = ['sup', 'i', 'span']
-        return getattr(element, 'name', None) == 'a' \
-               and getattr(element.parent, 'name', None) not in tags \
-               and not element.has_attr('style')
+        tag_types = ['sup', 'i', 'span']
+        return getattr(tag, 'name', None) == 'a' \
+               and getattr(tag.parent, 'name', None) not in tag_types \
+               and not tag.has_attr('style')
