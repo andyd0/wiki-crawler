@@ -14,12 +14,8 @@ Options...
 
 ## Implementation Details
 
-Beautiful Soup was used to generate a parse HTML to process.
-
-A logger is used to display summary details to screen so that there is a way to know at what point the processing is at. Full path details are saved to a log file as well.
-
-### Details
-
+* Beautiful Soup was used to generate a parse HTML to process.
+* A logger is used to display summary details to screen so that there is a way to know at what point the processing is at. Full path details are saved to a log file as well.
 * Handles cycles and paths that intersect with known paths that lead to Philosophy. If a cycle is found, the crawl is terminated
 * There are redirects to Philosophy (e.g. Philosophical) that should be valid. To handle these instances, the title of the page is checked to see if it says "Philosophy" even if the link that lead it to there may not be.
 * On rare cases, the link may be to an internal Wikipedia domain (eg. Wikitionary). These are allowed.
