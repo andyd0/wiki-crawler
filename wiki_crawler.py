@@ -2,11 +2,11 @@ from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 from collections import Counter
 from matplotlib.ticker import FormatStrFormatter
+from statistics import mean
 import calendar
 import logging
 import matplotlib.pyplot as plt
 import requests
-from statistics import mean
 import time
 
 
