@@ -172,7 +172,7 @@ class WikiCrawler:
         """
 
         length = len(path)
-        to_target = self._wiki_to_target_length[wiki_topic] if wiki_topic else 0
+        to_target = self._wiki_to_target_length.get(wiki_topic, 0)
         for i, wiki in enumerate(path):
             self._wiki_to_target_length[wiki] = length - i + to_target - 1
 
